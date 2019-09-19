@@ -9,7 +9,7 @@ The list of topics follows bellow:
 
 *1*.Introduction to RStudio, Git
 
-2.Types of variables, basic built-in functions
+*2*.Types of variables, basic built-in functions
 
 3.Loops and functions
 
