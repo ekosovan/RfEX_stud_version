@@ -7,7 +7,7 @@ I will update it once in few days with answers to your questions. Please, look f
 
 The list of topics follows bellow:
 
-1.Introduction to RStudio, Git
+*1*.Introduction to RStudio, Git
 
 2.Types of variables, basic built-in functions
 
