@@ -1,6 +1,6 @@
 # RfEX-2019
 Lecture Notes, codes and scripts for MAE RfEX course
-
+BLABLABLA
 Here you may find frequently asked questions [Q&A doc](https://docs.google.com/document/d/1dcPQektVD4qSnjCsYkVmsLpmX37Bsep80yerRW4zZEQ/edit?usp=sharing)
 
 I will update it once in few days with answers to your questions. Please, look for the answer to your question first in that doc.
