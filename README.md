@@ -7,15 +7,15 @@ I will update it once in few days with answers to your questions. Please, look f
 sdfghjkl
 The list of topics follows bellow:
 
-*1*.Introduction to RStudio, Git
+*1*. Introduction to RStudio, Git
 
-*2*.Types of variables, basic built-in functions
+*2*. Types of variables, basic built-in functions
 
-*3*.Loops and functions
+*3*. Loops and functions
 
-4.Import/export of data, basic manipulations (mutation, aggregation)
+*4*. Import/export of data, basic manipulations (mutation, aggregation)
 
-5.Visualization
+*5*. Visualization
 
 6.Advanced data manipulations
 
