@@ -25,3 +25,5 @@ The list of topics follows bellow:
 *9*.Linear Models
 
 *10*.Wrap up
+
+Yey!
