@@ -1,0 +1,24 @@
+Using gipt  lab comes from python 
+Tools - global options - appearance (classic by default) + font size as well. 
+
+________________________________
+> a = 5
+> a
+[1] 5
+> 2^7
+[1] 1 
+___________________________________
+
+R script PUSH CTRL + ENTER for running the R script (just las line)
+CTRL+SHIFT+ENTER - run all the code
+___________________________________
+C://USERS// - place to store 
+Change the working directory - command WORKING DIRECTORY
+SESSION-SET WORKING DIRECTORY - CHOOSE DIRECTORY 
+#setwd["C:\"] 
+We are choosing the workplace 
+
+________________________________
+
+https://github.com/ekosovan/RfEX_stud_version 
+
