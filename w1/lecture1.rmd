@@ -55,7 +55,7 @@ class: middle, inverse
 - <font color= "orange"><b>Conditions to pass</b></font>
 
     - <font color= "orange"> at least 70p in total </font>
-    - <font color= "orange"> at least 60% in 3 tests </font> 
+    - <font color= "orange"> at least 60% in 2 problem sets </font> 
 
 ---
 class: middle, inverse
