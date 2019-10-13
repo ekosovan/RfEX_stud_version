@@ -1,3 +1,4 @@
+install.packages("magrittr")
 library(magrittr)
 
 # 1.) FUN WITH FACTORS ----------------------------------------------------
@@ -58,6 +59,7 @@ c(factor(c("A","B","C")),"B") # brainfuck
 
 # 4.) DATA.FRAMES BASICS ------------------------------------------------------
 # PACKAGES
+install.packages('tidyverse')
 library(tidyverse)
 
 # DATA LOADING
@@ -105,8 +107,8 @@ stocks %>%
 #        first 5 days of even years
 #        first 10 days of odd years
 stocks %>% 
-    select(day, year, SWMI, CAC) %>%
-    filter(year %% 2 == 0 & | year %% 2 == 1 &)
+    select(day, year, SMI, CAC) %>%
+    filter(year %% 2 == 0 & day <= 5 | year %% 2 == 1 & day <= 10)
 
 # OTHER WAYS OF SELECT SPECIFICATION
     ## A range of columns
