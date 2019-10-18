@@ -1,4 +1,4 @@
-library(magrittr)
+library(magrittr)\
 library(tidyverse)
 
 # DATA --------------------------------------------------------
@@ -6,14 +6,14 @@ library(tidyverse)
 
 # READ BY YEAR ------------------------------------------------------------
 
-files = list.files("w6/data/yearly", full.names = T)
+files = list.files("data/yearly", full.names = T)
 
 # the for loop way
-for (i in files) {
+for (file in files) {
     if (exists("games")) {
-        games = rbind(games, read_csv(i))
+        games = rbind(games, read_csv(file))
     } else {
-        games = read_csv(i)
+        games = read_csv(file)
     }
 }
 
@@ -44,6 +44,8 @@ check_numeric = function(col) {
 for (i in colnames(games)) {
     games[,i] = check_numeric(pull(games[,i]))
 }
+
+head(games(20))
 
 # vectorised
 games %<>% 
@@ -78,36 +80,17 @@ read_by_year = function(path, years) {
     return(input)
 }
 
-games_2k = read_by_year("w6/data/yearly", 2000:2030)
+games_2k = read_by_year("w4/data/yearly", 2000:2030)
 
 
-# LINEAR RELATIONSHIP? ----------------------------------------------------
+# Selection ----------------------------------------------------
 
-games_lm = 
+games_by_year = 
     games %>% 
     select(Global_Sales, Year_of_Release, Critic_Score, User_Score) %>% 
     na.omit() %>% 
-    split(.$Year_of_Release) %>% 
-    map(~lm(Global_Sales ~ Critic_Score + User_Score, data = .)) %>% 
-    map(summary) %>% 
-    map("coefficients") %>% 
-    do.call(rbind.data.frame, .) %>%
-    mutate(desc = rownames(.))
+    split(.$Year_of_Release)
 
-games_lm$year = 
-    games_lm %>% 
-    pull(desc) %>% 
-    map_chr(~strsplit(.x, "\\.")[[1]][1])
-
-games_lm$coef =
-    games_lm %>% 
-    pull(desc) %>% 
-    map_chr(~strsplit(.x, "\\.")[[1]][2])
-
-games_lm %>% 
-    select(year, coef, Estimate) %>% 
-    filter(year > 1994) %>% 
-    spread(coef, Estimate) %>% View()
 
 games %>% 
     drop_na() %>% 
@@ -116,16 +99,3 @@ games %>%
     summarise(critics = min(Critic_Score, na.rm = T),
               users = min(User_Score, na.rm = T)) %>% View()
 
-# SAVE BY YEAR ------------------------------------------------------------
-# dir.create("w4/data/yearly")
-
-# split(games, games$Year_of_Release) %>% 
-games %>% 
-    split(.$Year_of_Release) %>% 
-    map(., ~write_csv(.x,
-                       paste0("w6/data/yearly/game_sales",
-                              unique(.x$Year_of_Release),
-                              ".csv"
-                              )
-                       )
-         )
