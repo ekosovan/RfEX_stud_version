@@ -1,4 +1,4 @@
-library(magrittr)\
+library(magrittr)
 library(tidyverse)
 
 # DATA --------------------------------------------------------
