@@ -158,7 +158,7 @@ sales %>%
     group_by(YEAR_ID) %>% 
     summarise(sales_shr = sum(first5 * sales) / sum(sales))
 
-# what is the projection for 2010?
+# what is the projection for 2005?
 sales %>% 
     group_by(YEAR_ID) %>% 
     summarise(sales = sum(SALES)) %>%
