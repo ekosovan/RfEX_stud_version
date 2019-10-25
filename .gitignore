@@ -6,3 +6,4 @@
 remark.js
 libs*
 .tmp.drivedownload
+.DS_Store
