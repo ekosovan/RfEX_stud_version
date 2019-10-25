@@ -80,7 +80,7 @@ read_by_year = function(path, years) {
     return(input)
 }
 
-games_2k = read_by_year("w4/data/yearly", 2000:2030)
+games_2k = read_by_year("data/yearly", 2000:2030)
 
 
 # Selection ----------------------------------------------------
