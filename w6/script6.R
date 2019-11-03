@@ -19,7 +19,7 @@ head(japan)
 # standardise colnames
 colnames(japan) %>% tolower() %>% unique() %>% length() == ncol(japan)
 colnames(japan) %<>% tolower()
-
+head(japan)
 # numeric values
 japan$value %<>% as.numeric()
 japan$value %>% summary()
@@ -38,8 +38,8 @@ na_dif = function(x, y){
 
 # OVERVIEWS ---------------------------------------------------------------
 # what is the export/import and the trade deficite per commodity type and country?
-#EI = 
-EI = japan %>% 
+EI = 
+    japan %>% 
     select(exp_imp, country, hs2, value) %>% 
     group_by(country, hs2, exp_imp) %>% 
     summarise(value = sum(value)) %>% 
@@ -53,12 +53,12 @@ EI
 # report the export, import and trade performance for each commodity across the countries
 # performance is defined as percentage of the mean commodity sales (in all countries)
 
-EI_compare = #
+EI_compare = 
     EI %>% 
     select(-dif_na) %>% 
     gather(EI, value, export:dif) %>% 
     group_by(hs2) %>% 
-    mutate(comparison = value / mean(value, na.rm = T))%>% 
+    mutate(comparison = value / mean(value, na.rm = T)) %>% 
     select(- value) %>% 
     spread(EI, comparison)
 
@@ -86,6 +86,7 @@ EI_out %>%
     left_join(countries) %>% View()
 
 # & add commodity description
+
 EI_out %>% 
     left_join(countries, by = c("country" = "country")) %>% 
     inner_join(h2) %>% 
