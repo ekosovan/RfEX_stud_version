@@ -19,14 +19,14 @@ list.files("data")
 #       decimals separated by dot '.'
 #       rows separated by newline '\n'
 # fied description (colnames) non-mandatory
-csv = read_csv("data/london_2014-05.csv")
+csv = read_csv("Documents/GitHub/RfEX_stud_version/w5/data/london_2014-05.csv")
 head(csv)
 
 # A special sub-type is CSV saved from Slav version of Excel (yes, Excel hates you)
 # looks like csv, but has different separators:
 #       columns separated by semicolon ';'
 #       decimals separated by comma ','
-csv2 = read_csv2("data/london_2014-05.csv2")
+csv2 = read_csv2("Documents/GitHub/RfEX_stud_version/w5/data/london_2014-05.csv2")
 head(csv2)
 
 
@@ -35,27 +35,27 @@ head(csv2)
 # widely used everywhere
 # tabular content
 library(readxl)
-xls = read_excel("data/econmap.xlsx", sheet = 1)
+xls = read_excel("Documents/GitHub/RfEX_stud_version/w5/data/econmap.xlsx", sheet = 1)
 head(xls)
 
 
 # JSON ---------------------------------------------------------------------
 library(jsonlite)
-json = read_file("data/fiscal2017.json")
+json = read_file("Documents/GitHub/RfEX_stud_version/w5/data/fiscal2017.json")
 json = fromJSON(json)
 
 json$data %>% View()
 
 # ANY TABULAR FLATFILE ----------------------------------------------------
 # any flatfile with rigid separators
-del = read_delim("data/london_2014-05.tsv", delim = "\t")
+del = read_delim("Documents/GitHub/RfEX_stud_version/w5/data/london_2014-05.tsv", delim = "\t")
 
 
 # RDATA / RDS -------------------------------------------------------------------
 # saving R objects (whatever in your Environment)
 # good for saving models and other special (non-tabular) data
-load("data/london.RData") # no assignment, dangerous!
-rds = readRDS("data/london.RDS")
+load("Documents/GitHub/RfEX_stud_version/w5/data/london.RData") # no assignment, dangerous!
+rds = readRDS("Documents/GitHub/RfEX_stud_version/w5/data/london.RDS")
 
 
 # DATASETS ----------------------------------------------------------------
@@ -69,20 +69,20 @@ rds = readRDS("data/london.RDS")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # CSV ---------------------------------------------------------------------
-write_csv(csv, "data/london_2014-05.csv")
+write_csv(csv, "Documents/GitHub/RfEX_stud_version/w5/data/london_2014-05.csv")
 
 
 # JSON --------------------------------------------------------------------
-write_json(json, "data/fiscal2017.json")
+write_json(json, "Documents/GitHub/RfEX_stud_version/w5/data/fiscal2017.json")
 
 
 # RDATA / RDS -------------------------------------------------------------
-save(rdata, file = "data/london.RData")
-saveRDS(rds, file = "data/london.RDS")
+save(rdata, file = "Documents/GitHub/RfEX_stud_version/w5/data/london.RData")
+saveRDS(rds, file = "Documents/GitHub/RfEX_stud_version/w5/data/london.RDS")
 
 # XLS
 library(writexl)
-write_xlsx(xls, "data/econmap.xlsx")
+write_xlsx(xls, "Documents/GitHub/RfEX_stud_version/w5/data/econmap.xlsx")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -91,7 +91,7 @@ write_xlsx(xls, "data/econmap.xlsx")
 list.files("data")
 rm(list = ls())
 
-sales = read_csv("data/sales_data_sample.csv")
+sales = read_csv("Documents/GitHub/RfEX_stud_version/w5/data/sales_data_sample.csv")
 # https://toolbox.google.com/datasetsearch/search?query=sales&docid=1%2BevukXLxiyX4xlWAAAAAA%3D%3D
 head(sales)
 summary(sales)
@@ -106,19 +106,21 @@ sales %>%
 na_territory = 
     sales %>% 
     filter(is.na(TERRITORY)) %>% 
-    pull(COUNTRY) %>% 
+    pull(COUNTRY) %>% #takes column and make it a vector from it
     unique()
 na_territory
 
 # are all of those countries without region?
 sales %>% 
-    filter(COUNTRY %in% na_territory) %>% 
+    filter(COUNTRY %in% na_territory) %>% #filter all countries that are in na_territory
     pull(TERRITORY) %>% 
-    unique()
+    unique() #they are not
 
 # let's fill in the missing values
-sales %<>% 
+sales %<>% #this type of pipe tells we want to change it directly in sales
     mutate(TERRITORY = ifelse(COUNTRY %in% na_territory, "AMER", TERRITORY))
+#ifelse - if the 1st condition is TRUE, use AMER, otherwise value from territory
+head(sales$TERRITORY)
 
 # SALES DECOMPOSITION PER TERRITORY ---------------------------------------
 # what is the customer behaviour per territory?
@@ -152,7 +154,7 @@ sales %>%
     summarise(sales = sum(SALES)) %>% 
     ungroup() %>% 
     mutate(first5 = ifelse(MONTH_ID <= 5, 1, 0)) %>% 
-    group_by(YEAR_ID, first5) %>% 
+    group_by(YEAR_ID, first5) %>% #basicly sorts to same objects, which R remembers
     summarise(sales = sum(sales)) %>% 
     ungroup() %>% 
     group_by(YEAR_ID) %>% 
