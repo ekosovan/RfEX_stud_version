@@ -45,7 +45,6 @@ indicators = c('ph_seq','ffpos', 'pppos','region','gereg', 'lfstat','a_lfsr','h_
 # Create a slice of the dataframe for those indicators for which column available is TRUE. 
 # Call the result df_slice
 # You can either do that by creating a function or without creating a function
-# But note full points will be 
 
 
 #############################################################################################
@@ -56,7 +55,8 @@ indicators = c('ph_seq','ffpos', 'pppos','region','gereg', 'lfstat','a_lfsr','h_
 
 
 #2.1) Name of the columns are not really informative.Rename columns using col_names vector
-
+col_names = c("household_id","family_id","individual_id",'region','employment_status',
+              'year','age','race','hispanic','self_employed','sex','family_income')
 
 # 2.2)
 # Create a function that has dataframe df as an input and returns you the number of households,
