@@ -115,7 +115,7 @@ col_names = c("household_id","family_id","individual_id",'region','employment_st
 
 
 # 3.5)
-# How many time did John Aalbers participate in the Olympics held in different years
+# How many time did John Aalberg participate in the Olympics held in different years
 
 # 3.6)
 # How many gold medals in tennis did the Switzerland team win at the 2008 Olympics?
