@@ -227,5 +227,6 @@ str_extract("$?+.","\\.")
 ```{r substr_vs_regex_solved}
 (files = paste0("file_", c(0,1,10,100,1000), "_", 2010:2014, ".csv"))
 str_extract(files,"_[:alnum:]*\\.") %>% 
+     print() %>%
     str_remove_all("[:punct:]")
 ```
