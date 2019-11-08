@@ -1,3 +1,4 @@
+library('magrittr')
 romeo = readLines("http://www.gutenberg.org/cache/epub/1112/pg1112.txt", encoding = "UTF8")
 romeo %<>% {.[. != ""]}
 first_line = which(romeo[1:100] == "1595")
@@ -74,7 +75,7 @@ str_extract("abc_de","_.+")
 str_replace_all("abcd_a","^a","g")
 
 # "$" end of string
-str_replace_all("abcd_a","a$","g")
+str_replace_all("abcd_ab","a$","g")
 
 # "|" RegEx or 
 str_extract(c("abc","cd"),"ab|c")
