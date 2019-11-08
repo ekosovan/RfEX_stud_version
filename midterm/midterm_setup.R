@@ -10,6 +10,12 @@
 #    to understand your code)
 
 
+install.packages("tidyverse")
+library(haven)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(readr)
 
 
 #############################################################################################
@@ -20,6 +26,12 @@
 # load the data cpsmar12.dta  (find out about how to read .dta by googling). Do not forget to transform the
 # result of read_*** into more common to R format
 # Then select the first 100,000 observations
+
+cpsmar12 <- read_dta("midterm/cpsmar12.dta")
+data<- data.frame(cpsmar12)
+head(data)
+new_data <- data %>%
+  slice(1:1000)
 
 # To reduce memory consumption remove unnecessary files. In environment there should only be 
 # a single dataframe
@@ -39,7 +51,25 @@ indicators = c('ph_seq','ffpos', 'pppos','region','gereg', 'lfstat','a_lfsr','h_
               'not_working','selfempl','wages' ,'hrsly','hrslt','female' ,'married',
               'divorced', 'children')
 
+#checking each element using for loop and storing it into new vector
+availability <- function(df,v){
+  value=c()
+  for (i in 1:length(v)){
+    value <- append(value,indicators[i] %in% names(df))  
+  }
+  available_series <- data.frame(indicator=indicators,available=value)
+  return(available_series)
+}
 
+#more smooth vay of checking and creating whole vector and store it directly in data frame
+availability2 <- function(df,v){
+  value=indicators %in% names(df) 
+  available_series <- data.frame(indicator=indicators,available=value)
+  return(available_series)   
+}
+
+available_series <- availability(new_data,indicators)
+available_series2 <-availability2(new_data,indicators)
 
 #1.3)
 # Create a slice of the dataframe for those indicators for which column available is TRUE. 
@@ -47,6 +77,16 @@ indicators = c('ph_seq','ffpos', 'pppos','region','gereg', 'lfstat','a_lfsr','h_
 # You can either do that by creating a function or without creating a function
 # But note full points will be 
 
+df_slice <- available_series %>%
+  filter(available_series$available,TRUE) %>%
+  pull(1)
+
+df_slice <- as.vector(df_slice)
+
+selected_data <- new_data %>%
+  select(df_slice)
+
+map.df(new_data,select %in% df_slice)
 
 #############################################################################################
 # Task 2
@@ -55,21 +95,44 @@ indicators = c('ph_seq','ffpos', 'pppos','region','gereg', 'lfstat','a_lfsr','h_
 # variables
 
 
-#2.1) Name of the columns are not really informative.Rename columns using col_names vector
+#2.1) Name of the columns are not really informative. Rename columns using col_names vector
 
 
 # 2.2)
 # Create a function that has dataframe df as an input and returns you the number of households,
 # number of families and number of individuals within the dataframe df
 
+fun1 <- function(df){
+  value=indicators %in% names(df) 
+  available_series <- data.frame(indicator=indicators,available=value)
+  return(available_series)   
+}
 
 
 # 2.3)
 # Calculate the number of self_employed for males and females
 
+str(sliced_data$semp_yn) #thanks to this I found what 0 1 2 means --> 1 means yes, other no
+sliced_data %>%
+  group_by(a_sex)%>%
+  count(semp_yn)
+
+#more aggregated results would be
+
 
 # 2.4)
 # Calculate the share of self_employed males and females
+
+self_employed <- cbind(self_employed,share=self_employed$number/sum(sliced_data$semp_yn))
+
+#elegant solution
+sliced_data %>%
+  group_by(a_sex)%>%
+  count(semp_yn, name="number")%>%
+  filter(semp_yn==1)%>%
+  ungroup()%>%
+  mutate(share=number/sum(number)*100)
+
 
 
 #############################################################################################
@@ -97,36 +160,97 @@ indicators = c('ph_seq','ffpos', 'pppos','region','gereg', 'lfstat','a_lfsr','h_
 # give earn you ZERO points.
 # Try to use magrittr pipe operators in order to avoid creating extra useless variables.
 
+athlete_events <- read_csv("midterm/athlete_events.csv")
+glimpse(athlete_events)
+head(athlete_events)
+
 # 3.1)
 # How old were the youngest male and female participants of the 1992 Olympics?
+athlete_events %>%
+  filter(Year==1992)%>%
+  group_by(Sex)%>%
+  summarize(youngest=min(Age,na.rm=TRUE))
 
 # 3.2)
 # What was the percentage of male basketball players amongh all the male participants of the 2012 Olympics?
 # Round answer to the first decimal
+
+athlete_events %>%
+  filter(Year==1992,Sex=="M")%>%
+  count(Sport)%>%
+  mutate(share=round(n/sum(n)*100,1))
 
 
 # 3.3)
 # What are the mean and standard deviation of height for female tennis players who participated in the 2000
 # Olympics. Round to the first decimal
 
+athlete_events %>%
+  filter(Year==2000,Sex=="F")%>%
+  summarize(mean=round(mean(Height,na.rm=TRUE),1),stddev=round(sd(Height,na.rm=TRUE),1))
 
 # 3.4)
 # Find the heaviest athete among 2006 Olympics participants. What sport did he or she do?
+
+athlete_events %>%
+  filter(Year==2006)%>%
+  filter(Weight==max(Weight,na.rm=TRUE))
+
+#another solution
+
+athlete_events[which.max(athlete_events$Weight & athlete_events$Year==2006),]
 
 
 # 3.5)
 # How many time did John Aalbers participate in the Olympics held in different years
 
+athlete_events %>%
+  filter(Name=="John Aalberg")%>%
+  group_by(Year)%>%
+  count(Year)
+
 # 3.6)
 # How many gold medals in tennis did the Switzerland team win at the 2008 Olympics?
+
+athlete_events %>%
+  filter(Team=="Switzerland",Year==2008)%>%
+  count(Medal)
 
 # 3.7)
 # Is it true that there were Summer Olympics held in Atlanta? Is it true that there were Winter Olympics
 # held in Squaw Valley
 
+athlete_events %>%
+  filter(Season=="Summer",City=="Atlanta")
+
+#other approach
+any(athlete_events$Season=="Summer" & athlete_events$City=="Atlanta")
+
+athlete_events %>%
+  filter(Season=="Winter",City=="Squaw Valley")
+
+#other approach
+any(athlete_events$Season=="Winter" & athlete_events$City=="Squaw Valley")
+
 # 3.8)
 # Is it true that Spain won fewer medals than Italy at the 2016 Olymptics?
+
+athlete_events %>%
+  filter(Year==2016, Team==c("Spain","Italy"))%>%
+  group_by(Team)%>%
+  count(Medal)
+
+athlete_events %>%
+  filter(Year==2016, Team==c("Spain","Italy"))%>%
+  na.omit(Medal)%>%
+  group_by(Team)%>%
+  tally(name = "number_of_medals")
 
 
 # 3.9)
 # What is the absolute difference between the number of unique sports at the 1986 Olympics and 2002 Olympics?
+athlete_events %>%
+  filter(Year==2002)%>%
+  summarise(unique_sports=n_distinct(Sport))
+
+
