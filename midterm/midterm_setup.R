@@ -129,4 +129,4 @@ col_names = c("household_id","family_id","individual_id",'region','employment_st
 
 
 # 3.9)
-# What is the absolute difference between the number of unique sports at the 1986 Olympics and 2002 Olympics?
+# What is the absolute difference between the number of unique sports at the 1896 Olympics and 2002 Olympics?
