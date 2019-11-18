@@ -26,31 +26,40 @@ persons =
     str_remove(",") %>%
     str_squish() %>% 
     na_rem()
+persons
+
 rm(header)
 
 # try to find them in the text
+
 corpus %>% 
-    str_subset(paste(persons, collapse = "|"))
+    str_subset(paste(persons, collapse = "|")) %>% head(30)
 
 corpus[20:30]
 
-test_person =
-    corpus[20:30] %>% 
+corpus_person =
+    corpus %>% 
     str_extract("^\\s{2}[:alpha:]+\\.") %>%
     str_squish() %>% 
     str_remove("\\.") %>% 
     na_rem() %>% 
     unique()
+
+corpus_person
+
 rm(test_person)
 
 connect_person = map(corpus_person, ~str_subset(persons, .x))
+connect_person
 names(connect_person) = corpus_person
 connect_person %<>% unlist()
+connect_person
 rm(corpus_person)
 rm(persons)
 
 names(connect_person) %<>%
     str_remove("[0-9]+") 
+connect_person
 
 connect_person =
     names(connect_person) %>% 
@@ -59,26 +68,33 @@ connect_person =
     {which(names(connect_person) %in% .)} %>% 
     {connect_person[multiply_by(.,-1)]}
 
+connect_person
+
 lines_person = 
     names(connect_person) %>% 
     map(~str_subset(corpus, paste0("^\\s{2}", .x)))
 
 names(lines_person) = connect_person
 
+lines_person
+
 rm(na_rem, lines_person, connect_person, corpus)
+
 
 # SALES DATA --------------------------------------------------------------------
 # original at:
 # https://toolbox.google.com/datasetsearch/search?query=sales&docid=5kapgBB5IYEGaNZVAAAAAA%3D%3D
 # but I did some preprocessing
 
-list.files("w8/data")
-zipped = unzip("w8/data/liquor_sales.zip", list = TRUE)
 
-liquor = read_csv(unz("w8/data/liquor_sales.zip", zipped$Name),
+list.files("data")
+zipped = unzip("data/liquor_sales.zip", list = TRUE)
+
+liquor = read_csv(unz("data/liquor_sales.zip", zipped$Name),
                   col_types = paste0(rep("c", 24), collapse = "")) # safer way
 
 summary(liquor)
+
 head(liquor, 100) %>% View()
 
 index = 
@@ -87,6 +103,7 @@ index =
     which() 
 char_names = colnames(liquor)[1:index]
 num_names = colnames(liquor)[(index + 1):ncol(liquor)]
+
 rm(index)
 
 liquor %<>% 
@@ -105,6 +122,8 @@ liquor %<>%
     mutate_at(num_names, to_num)
 
 rm(char_names, num_names, to_num)
+ 
+liquor %>% head(100) %>% View()
 
 map_chr(liquor, class)
 
@@ -124,7 +143,7 @@ liquor %<>%
     mutate(gps = str_extract(`Store Location`,
                              "[0-9]{2}\\.[0-9]{1,6}, \\-[0-9]{2}\\.[0-9]{1,6}"))
 
-# where GPS wanst extracted?
+# where GPS wasn't extracted?
 liquor %>% 
     pull(gps) %>% 
     is.na() %>% 
@@ -149,6 +168,7 @@ gps_loc =
 
 colnames(gps_loc) = c("lat", "lon")
 
+
 fac_to_char = function(x) {
     as.numeric(as.character(x)) %>% 
         return()
@@ -159,3 +179,7 @@ liquor =
     cbind(liquor, .) %>% 
     select(-gps) %>% 
     mutate_at(c("lat", "lon"), .funs = fac_to_char)
+
+liquor %>% head(100) %>% View(
+    
+)
