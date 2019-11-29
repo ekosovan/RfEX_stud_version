@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Lecture 10</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Zhenya Kosovan" />
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="libs/remark-css-0.0.1/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Lecture 10
+### Zhenya Kosovan
+### 2019/11/29
+
+---
+
+
+## Structure
+- ggplot2 ideology
+- Practice
+
+
+
+---
+class: middle, inverse
+
+# ggplot2
+
+---
+
+## Why ggplot2?
+- consistent underlying grammar of graphics
+- plot specification at high level of abstraction
+- very flexible
+- theme system polishing experience
+- mature and complete system
+
+Some limitations (yeah, there are some):
+
+-   3-dimensional graphics 
+-   Graph-theory type graphs
+-   Interactive graphics
+
+---
+
+## Grammar of graphics
+Idea: construct a plot out of independent building blocks:
+- data
+- aesthetic mapping
+- geometric object
+- statistical transformations
+- scales
+- coordinate system
+- position adjustments
+- faceting
+
+
+---
+## Introducing the data
+
+
+```r
+housing &lt;- read_csv("dataSets/landdata-states.csv")
+```
+
+```
+## Parsed with column specification:
+## cols(
+##   State = col_character(),
+##   region = col_character(),
+##   Date = col_double(),
+##   Home.Value = col_double(),
+##   Structure.Cost = col_double(),
+##   Land.Value = col_double(),
+##   Land.Share..Pct. = col_double(),
+##   Home.Price.Index = col_double(),
+##   Land.Price.Index = col_double(),
+##   Year = col_double(),
+##   Qrtr = col_double()
+## )
+```
+
+---
+
+## Simple functions
+
+
+```r
+head(housing[1:5])
+```
+
+```
+## # A tibble: 6 x 5
+##   State region  Date Home.Value Structure.Cost
+##   &lt;chr&gt; &lt;chr&gt;  &lt;dbl&gt;      &lt;dbl&gt;          &lt;dbl&gt;
+## 1 AK    West   2010.     224952         160599
+## 2 AK    West   2010.     225511         160252
+## 3 AK    West   2010.     225820         163791
+## 4 AK    West   2010      224994         161787
+## 5 AK    West   2008      234590         155400
+## 6 AK    West   2008.     233714         157458
+```
+
+---
+
+## Basic Histogram
+
+
+```r
+library(ggplot2)
+ggplot(housing, aes(x = Home.Value)) +
+  geom_histogram()
+```
+
+```
+## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+```
+
+![](lecture10_files/figure-html/fig1-1.png)&lt;!-- --&gt;
+
+
+---
+
+## Basic Scatterplot
+
+
+```r
+ggplot(filter(housing, State %in% c("MA", "TX")),
+       aes(x=Date,
+           y=Home.Value,
+           color=State))+
+  geom_point()
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-3-1.png)&lt;!-- --&gt;
+
+---
+
+# Geometric Objects And Aesthetics
+
+## Aesthetic Mapping
+
+In ggplot land **aesthetic** means "something you can see", i.e.:
+
+-   position (i.e., on the x and y axes)
+-   color ("outside" color)
+-   fill ("inside" color)
+-   shape (of points)
+-   linetype
+-   size
+
+Aesthetics is different for different types of plots:
+- **geom help** is there for assistance
+- aesthetic mappings are set with the **`aes()`** function.
+
+---
+## Geometic Objects (`geom`)
+
+Geometric objects are the actual marks we put on a plot. Examples include:
+
+-   points (`geom_point`, for scatter plots, dot plots, etc)
+-   lines (`geom_line`, for time series, trend lines, etc)
+-   boxplot (`geom_boxplot`, for, well, boxplots!)
+
+A plot must have at least one geom; there is no upper limit. You can add a geom to a plot using the `+` operator
+
+You can get a list of available geometric objects using the code below:
+
+
+```r
+help.search("geom_", package = "ggplot2")
+```
+
+```
+## starting httpd help server ... done
+```
+
+
+
+---
+
+```r
+hp2001Q1 &lt;- filter(housing, Date == 2001.25) 
+ggplot(hp2001Q1,
+       aes(y = Structure.Cost, x = log(Land.Value))) +
+  geom_point()
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-5-1.png)&lt;!-- --&gt;
+
+
+---
+
+
+```r
+hp2001Q1$pred.SC &lt;- predict(lm(Structure.Cost ~ log(Land.Value),
+                               data = hp2001Q1))
+
+p1 &lt;- ggplot(hp2001Q1, aes(x = log(Land.Value),
+                           y = Structure.Cost))
+
+p1 + geom_point(aes(color = Home.Value)) +
+  geom_line(aes(y = pred.SC))
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-6-1.png)&lt;!-- --&gt;
+
+---
+## Smoothing
+
+
+```r
+p1 +
+  geom_point(aes(color = Home.Value)) +
+  geom_smooth()
+```
+
+```
+## `geom_smooth()` using method = 'loess' and formula 'y ~ x'
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-7-1.png)&lt;!-- --&gt;
+
+---
+## Text points
+
+
+```r
+p1 + 
+  geom_text(aes(label=State), size = 3)
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-8-1.png)&lt;!-- --&gt;
+
+
+
+---
+## Text points improved
+
+
+```r
+## install.packages("ggrepel") 
+library("ggrepel")
+p1 + 
+  geom_point() + 
+  geom_text_repel(aes(label=State), size = 3)
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-9-1.png)&lt;!-- --&gt;
+
+
+---
+## Utilizing Extra Aesthetics Options
+
+
+```r
+p1 +
+  geom_point(aes(color=Home.Value, shape = region))
+```
+
+```
+## Warning: Removed 1 rows containing missing values (geom_point).
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-10-1.png)&lt;!-- --&gt;
+
+---
+## Scaling'n'Stuff
+- if a variable is in *aes()* it is mapped, i.e. aes(color = x) doesn't specify color
+- but you can manipulate how exactly!
+- you do that by modifying **scale**
+
+In ggplot2 possible scales are:
+- position
+- color and fill
+- size
+- shape
+- line type
+
+To change scale you need need to add **scale_&lt;aestheric&gt;_&lt;type&gt;** to the plot
+
+---
+## Scaling Example
+
+```r
+p2 &lt;- ggplot(housing,
+             aes(x = State,
+                 y = Home.Price.Index)) + 
+        theme(legend.position="top",
+              axis.text=element_text(size = 6))
+(p3 &lt;- p2 + geom_point(aes(color = Date),
+                       alpha = 0.5,
+                       size = 1.5,
+                       position = position_jitter(width = 0.25,
+                                                  height = 0)))
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-11-1.png)&lt;!-- --&gt;
+
+--- 
+## Scaling Example
+
+
+```r
+p3 + scale_x_discrete(name="State Abbreviation") +
+  scale_color_continuous(name="",
+                         breaks = c(1976, 1994, 2013),
+                         labels = c("'76", "'94", "'13"))
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-12-1.png)&lt;!-- --&gt;
+
+---
+## Scaling Example
+
+
+```r
+p3 +
+  scale_x_discrete(name="State Abbreviation") +
+  scale_color_continuous(name="",
+                         breaks = c(1976, 1994, 2013),
+                         labels = c("'76", "'94", "'13"),
+                         low = "blue", high = "red")
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-13-1.png)&lt;!-- --&gt;
+
+---
+## Even More Scaling!
+
+```r
+p3 +
+  scale_color_gradient2(name="",
+                        breaks = c(1976, 1994, 2013),
+                        labels = c("'76", "'94", "'13"),
+                        low = "blue",
+                        high = "red",
+                        mid = "gray60",
+                        midpoint = 1994)
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-14-1.png)&lt;!-- --&gt;
+
+---
+
+## Faceting
+- many lines on one graph **are not** representative
+- faceting -&gt; splitting all lines into small separate graphs with common aesthetics
+- makes comparison between the plots easier
+
+Faceting is implemented by **facet_wrap()** and **facet_grid()**
+
+---
+
+```r
+p4 = ggplot(housing, aes(x = Date, y = Home.Value))
+p4 + geom_line(aes(color = State))  
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-15-1.png)&lt;!-- --&gt;
+
+---
+
+```r
+(p4 = p4 + geom_line() +
+   facet_wrap(~State, ncol = 10))
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-16-1.png)&lt;!-- --&gt;
+
+---
+## Themes aka handling non-data elements
+- axis labels
+- plot background
+- facet label background
+- legen appearance
+
+---
+
+```r
+p4 + theme_linedraw()
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-17-1.png)&lt;!-- --&gt;
+
+---
+
+```r
+p4 + theme_minimal() +
+  theme(text = element_text(color = "turquoise"))
+```
+
+![](lecture10_files/figure-html/unnamed-chunk-18-1.png)&lt;!-- --&gt;
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
