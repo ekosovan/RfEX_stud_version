@@ -1,0 +1,194 @@
+# 1) read the data, make sure columns are read in the right format, i.e. character, double, etc.
+
+#first column is not the title, check if all columns have the right format
+> library(readr)
+> adult <- read_csv("C:/Users/David/Downloads/adult.txt", 
+                    +     col_names = FALSE)
+Parsed with column specification:
+  cols(
+    X1 = col_double(),
+    X2 = col_character(),
+    X3 = col_double(),
+    X4 = col_character(),
+    X5 = col_double(),
+    X6 = col_character(),
+    X7 = col_character(),
+    X8 = col_character(),
+    X9 = col_character(),
+    X10 = col_character(),
+    X11 = col_double(),
+    X12 = col_double(),
+    X13 = col_double(),
+    X14 = col_character(),
+    X15 = col_character()
+  )
+> View(adult)
+
+# rename columns 
+
+colnames(adult) <- c("Age", "Workclass", "fnlwgt", "Education", "Education_num", "Marital_status", "Occupation", "Relationship", "Race", "Sex", "Gain", "Loss", "Hours_per_week", "Native_country","Salary")
+colnames(adult)
+nrow(adult)
+
+# 2) How many men and women are represented in the dataset? 
+
+only_male <- filter(adult, Sex=="Male")
+only_male
+nrow(only_male)
+# 21790 male in data set 
+
+only_female <- filter(adult, Sex=="Female")
+nrow(only_female)
+# 10771 female in data set 
+
+# final check if there is any NA
+nrow(only_male) + nrow(only_female) - nrow(adult)
+
+#  I have all male and female, the difference is 0
+
+# 3) What is the average age of women
+mean(only_female$Age)
+# just compute mean of Age in female data set
+# Average age of women is circa 37 years
+
+# 4) What are the mean and standard deviation of age for those who earn more than 50K per year
+# and those who earn less than 50K per year
+
+# more than 50K
+
+high_salary <- filter(adult, Salary==">50K")
+mean(high_salary$Age) # mean age is 44
+sd(high_salary$Age) # standart deviation is 10.5
+ 
+
+# less than 50K
+
+low_salary <- filter(adult, Salary=="<=50K")
+mean(low_salary$Age) # mean age is 37
+sd(low_salary$Age) # standart deviation is 14
+
+# 5) Is it true that people who earn more than 50K have at least high school education?
+a <- select(adult, Salary, Education)
+rich_people <- filter(a, Salary==">50K")
+rich_people
+educ_level <- c("Bachelors", "Prof-school", "Assoc-acdm", "Assoc-voc", "Masters or Doctorate")
+educ_level
+final <- str_detect(rich_people$Education, paste(educ_level, collapse = '|'))
+final
+final_df <- data.frame(final)
+head(final_df)
+sum(final_df$final == "TRUE")
+sum(final_df$final == "FALSE")
+
+# 6) Display age statistics for each race and each gender. Find the maximum age of men of 
+# Amer-Indian-Eskimo race
+age_stat <- select(adult, Race, Age)
+age_stat
+xc <- group_by(age_stat, Race)
+summarize(xc, Observations=n(), Average=mean(Age), SD=sd(Age), Min=min(Age), Max=max(Age))
+
+gender_stat <- select(adult, Sex, Age)
+gender_stat
+xb <- group_by(gender_stat, Sex)
+summarize(xb, Observations=n(), Average=mean(Age), SD=sd(Age), Min=min(Age), Max=max(Age))
+
+
+# 7) Among whom is the proportion of those who earn a lot (>50K) is greater: married or single men?
+#    Consider as married those who have marital-status starting with Married (Married-civ-spouse,
+#    Married-spouse-absent or Married-AF-spouse)
+
+edults <- select(adult, Salary, Marital_status)
+edults
+earn_lot <- filter(edults, Salary==">50K")
+earn_lot
+status <- c("Married-civ-spouse", "Married-spouse-absent", "Married-AF-spouse")
+result <- str_detect(earn_lot$Marital_status, paste(status, collapse = '|'))
+df <- data.frame(result)
+head(df)
+sum(df$result == "TRUE") > sum(df$result == "FALSE")
+
+
+# 8) What is the maximum number of hours a person works per week? How many people work such a number
+#    of hours, and what is the percentage of those who earn a lot (>50K) among them?
+
+adult_sample <- select(adult, Hours_per_week, Salary)
+max_number<-adult_sample[order(-adult_sample$Hours_per_week),]
+max_number
+#  now I can see the maximum number of hours is 99 hours per week
+number_of_people <- sum(max_number$Hours_per_week == 99)
+number_of_people
+# 85 people work that much 
+percentage <- sum(adult_sample$Salary == ">50K" & adult_sample$Hours_per_week == 99)
+percentage/number_of_people
+# 85 people work 99 hours per week and 25 of them have salary higher than 50K
+# percentage is equal to 29.4%
+
+# 9) Count the average time of work for those who earn a little and a lot (salary) for 
+#    each country (native-country). What will these be in Japan?
+
+
+groups <- group_by(adult, Native_country, Salary)
+overview<-summarise(groups, workhours=mean(Hours_per_week))
+overview
+Japan <- filter(overview, Native_country=="Japan")
+Japan
+
+
+
+# This is a very simple problem, yet it is worth 30% of the PS grade
+# Load titanic dataset. EXPLORE IT, if needed. Find the most common female name
+# and create a sorted dataset with columns "female name" and "number of occurences", i.e.
+# how many times the given name occured in the dataset.
+
+# install packages, in this case stringr will be pretty useful
+
+library(stringr)
+library(tidyverse)
+
+#  filter only famele a showing their name 
+
+my_data <- select(titanic, Sex, Name)
+b <- filter(my_data, Sex=="female")
+b
+
+# print all names after dot and space 
+
+all_names <-str_extract(b$Name,("(?<=\\.)\\s[:alpha:]+")) 
+all_names
+
+# print all names after special symbol \\(
+bracket_names <- str_extract(b$Name,("(?<=\\()[:alpha:]+")) 
+bracket_names
+
+# now I can see there are some NA. Lets write a function which prints names
+# from all_namaes if in the vector bracket_names is NA
+
+for(i in 1:length(all_names)){ 
+  if(is.na(bracket_names[i])==TRUE){
+    bracket_names[i]=all_names[i]
+  }
+}
+
+
+#  remove space in from of the names
+d <- str_remove(bracket_names,"^\\s")
+d
+
+# raname column name and create a data frame 
+colnames(d)
+ll <- data.frame(d)
+colnames(ll) <- "Name"
+ll
+
+# group by name because I dont need to see any single observation.
+#  I need to count number of observation for every name and order in descending order.
+
+e <- group_by(ll, Name)
+e
+pp<-summarise(e, count=n())
+pp
+ppp<-pp[order(-pp$count),]
+ppp
+
+# Now I can see the name with the most observations in titanic data set is Anna with 15 observations.
+ 
