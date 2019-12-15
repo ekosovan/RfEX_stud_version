@@ -1,0 +1,791 @@
+##############################################################################
+# Final Project
+##############################################################################
+
+##############################################################################
+# Instructions
+##############################################################################
+# 1) You should submit the .R script with the solution
+# 2) Make sure to comment wherever it is needed
+# 3) Every student should submit his\her own copy
+# 4) Pay attention to the question (if question asks for regex and you solve it differently - no points are awarded)
+# 5) You cannot use attach(dataframe)
+
+library(tidyverse)
+library(haven)
+library(stringr)
+library(tidyr)
+library(dplyr)
+library(readr)
+library('magrittr')
+
+##############################################################################
+# Part 1: Welcome to Credit Risk Analysis
+##############################################################################
+
+# You will be working on bankloans.csv. The data contains the credit details about credit borrowers: 
+# Data Description:
+
+# age - Age of Customer
+# ed - Eductation level of customer
+# employ: Tenure with current employer (in years)
+# address: Number of years in same address
+# income: Customer Income
+# debtinc: Debt to income ratio
+# creddebt: Credit to Debt ratio
+# othdebt: Other debts
+# default: Customer defaulted in the past (1= defaulted, 0=Never defaulted)
+setwd("C:/Users/Alex/Documents/CERGE-EI study/R for econometrics/FINAL EXAM/final/")
+raw_data = read_csv("bankloans.csv")
+raw_data = as.data.frame(raw_data)
+str(raw_data)
+
+# 1) Create a function 'var_summary' that has column (or vector) as an input and returns you a table with 
+#     number of observations, number of missing values, sum of all values, mean, standard deviation,
+#     variance, minimum, 0.01, 0.05, 0.10, 0.25, 0.5, 0.75, 0.90, 0.95 and 0.99 quantiles and maximum
+#     i.e. extended descriptive statistics
+summary(raw_data)
+install.packages("Hmisc")
+library(Hmisc)
+describe(raw_data)
+
+
+var_summary <- function(x){
+  description <- describe( x )
+  #description 
+  
+  # The 1 and 99 percentiles are buggy for the dummies (0 and 1 have no such percentiles)
+  tryCatch(quantilesxx <- quantile( x, c(.01, .99 ) ), error=function(e) quantilesxx <- c(0))
+  
+  
+  
+  sdex = sd(x)
+  summix = sum(x)
+  nobs = length(x)
+  # TryCatch - for dummies - they have no 1 and 99 percentile - causes error. 
+  tryCatch(list(description,quantilesxx, sdex, summix, nobs), error=function(e) list(description, sdex, summix, nobs))
+  #x
+}
+var_summary(raw_data$income)
+var_summary(raw_data$default)
+# It returns list with advanced descriptive statistics - number of observations repeats twice.
+# 2) Create a function 'create_dummies' that has two inputs - a dataframe and column_name
+#   The function has to create dummy variables for categorical data stored in column_name, i.e.
+#   suppose you have a single column  c('a','b','c','a') the return of the function has to produce 4x3 matrix with
+#   a b c
+#   1 0 0
+#   0 1 0
+#   0 0 1
+#   1 0 0
+#   The output of the function should be an input dataframe with dummies matrix added as new columns
+
+# Let Column A will be DEFAULT value 1; COLUMN B will be Default value 2; COLUMN C will be default value for NAs
+create_dummies <- function( x, data=NULL, sep="", drop=TRUE, fun=as.integer, verbose = FALSE ) { 
+  
+  
+  # HANDLE IF DATA IS MISSING.  
+  if( is.null(data) ) {
+    name <- as.character( sys.call(1) )[2]   
+    name <- sub( "^(.*\\$)", "", name )    # REMOVE prefix e.f
+    name <- sub( "\\[.*\\]$", "", name )   # REMOVE suffix   
+  } else {
+    if( length(x) > 1 ) stop( "Dumodelmatrixy variable is hard to produce: you provided more than 1 dumodelmatrixy variable." )  
+    name <- x
+    x    <- data[ , name]
+  }
+  
+  
+  # CHANGE TO FACTOR: KEEP LEVELS?
+  if( drop == FALSE && class(x) == "factor" ) {
+    x <- factor( x, levels=levels(x), exclude=NULL ) 
+  } else {
+    x<-factor( x, exclude=NULL )
+  }
+  
+  
+  # TRAP FOR ONE LEVEL :  
+  #   model.matrix will not be working is the factor has the only level. This is for a special case. 
+  if( length(levels(x))<2 ) {
+    
+    if( verbose ) warning( name, " has the ONLY level (1 level). Creating dumodelmatrixy variable anyway." )
+    
+    return(          
+      matrix( 
+        rep(1,length(x)), 
+        ncol=1, 
+        dimnames=list( rownames(x), c( paste( name, sep, x[[1]], sep="" ) ) ) 
+      )
+    )
+    
+  }
+  
+  
+  # GET THE MODEL MATRIX   
+  modelmatrix <- model.matrix( ~ x - 1, model.frame( ~ x - 1 ),  contrasts=FALSE )  # vec
+  colnames.modelmatrix <- colnames(modelmatrix) 
+  
+  if( verbose ) cat( " ", name, ":", ncol(modelmatrix), "dumodelmatrixy varibles created\n" ) 
+  
+  modelmatrix <- matrix( fun(modelmatrix), nrow=nrow(modelmatrix), ncol=ncol(modelmatrix), dimnames=list(NULL, colnames.modelmatrix) ) 
+  
+  
+  # Replace the column names 'x'... with the true variable name and a seperator
+  colnames(modelmatrix) <- sub( "^x", paste( name, sep, sep="" ), colnames(modelmatrix) )
+  if(! is.null(row.names(data)) ) rownames(modelmatrix) <- rownames(data)
+  
+  return(modelmatrix)   
+  
+}
+makedummy = create_dummies(raw_data$default)
+makedummy
+
+
+#  Our matrix: 
+#         default0 default1 defaultNA
+#[1,]        0        1         0
+#[2,]        1        0         0
+#[3,]        1        0         0
+#[4,]        1        0         0
+#[5,]        0        1         0
+
+# 3) Create a function 'outlier_capping' that would have vector or column as inputs. The function then 
+#    replaces all right tail outliers (very huge numbers) with 0.99 quantile and all 
+#    left tail outliers (big negative numbers) with 0.01 quantile of the column.
+#    The function should output the same column\vector with processed outliers    
+
+outlier_capping <- function(x){
+  quantiles <- quantile( x, c(.01, .99 ) )
+  x[ x < quantiles[1] ] <- quantiles[1]
+  x[ x > quantiles[2] ] <- quantiles[2]
+  x
+}
+outlier_capping( raw_data$income )
+
+# 4) Create a function 'process_missing' that would have a column\vector as an input. The function then
+#    replaces all missing values with the mean and returns the processed column\vector of data.
+
+
+install.packages("zoo")
+library(zoo)
+na.aggregate(raw_data)
+process_missing <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+process_missing(raw_data$income)
+
+# 5) Apply the 'var_summary' function to each column of the data. (Use purrr maps or lapply or sapply - whichever you prefer). Any missing data?
+
+sapply(raw_data, var_summary)  
+# Returns descriptive statistics for each column in the dataframe
+
+# 6) If everything is done correctly, there should be 150 NA's in 'default' column. Separate the dataframe into two
+#    bankloans_existing and bankloans_new based on whether default value is present or missing
+
+# Not very clear which dataframe should be named how among these 2 names offered. 
+# let bankloans_existing => NA (for future predictions in model)
+# let bankloans_new => no-NA (that is why they are new - we have all data)
+# I understand the text of this task may be interpreted in reverse as well (no direct meaning in the prescription of the task - I decided to pick up one of them in order not to lose time - the meaning of the analysis will not get changed)
+
+# OUTPUT is 150 NA in the default column 
+#$default[[1]]
+#x 
+#n  missing distinct     Info      Sum     Mean      Gmd 
+#700      150        2    0.579      183   0.2614   0.3867 
+
+
+#bankloans existing  - those observations for which there is a value for default (either 0 or 1)
+#bankloans_new - those observations for which default is NA
+
+
+#bankloans_existing <- subset(raw_data, raw_data$default == is.na(raw_data$default)) 
+#raw_data$def_exists = ifelse(raw_data$default > -1,1,0)
+#sum(raw_data$def_exists)
+bankloans_new <- subset(raw_data, is.na(raw_data$default))
+bankloans_existing <- subset(raw_data, raw_data$default > -1)
+
+# 7) Apply outlier_capping and process_missing on every column of bankloans_existing
+
+sapply(bankloans_existing, process_missing)
+# good
+sapply(bankloans_existing, outlier_capping)
+
+
+# 8) Calculate the correlation matrix with correlations represented by color (google heatmap, there is really simple solution using on
+#    of the packages mentioned in the course)
+matrix_raw <- as.matrix(raw_data)
+heatmap(matrix_raw)
+# Heatmap successfully created
+
+# 9) Create a 2x4 matrix of boxplots where x = default, y is all other columns (all 8 plots should be on one picture)
+# I did not quite clear understand the task. 
+# Here is simple boxplot for columns: 
+boxplot(raw_data, main = "boxplot.matrix(...., main = raw_data$default)",
+        notch = TRUE, col = 2:4)
+# Here is ggplot boxplot: 
+require(reshape2)
+library(ggplot2)
+library(gridExtra)
+library(MASS)
+# Compiled from official ggplot-2 documentation
+df <- subset(raw_data, select=c(default, age, ed, employ, address, income, debtinc, creddebt, othdebt))  
+p <- list(df)
+for (j in colnames(df)) {
+  p[[j]] <- ggplot(data=df, aes_string(x=df$default, y=j)) + # Specify dataset, input or grouping col name and Y
+    geom_boxplot(aes(fill=factor(type))) + guides(fill=FALSE) + # Boxplot by which factor + color guide
+    theme(axis.title.y = element_text(face="bold", size=14))  # Make the Y-axis labels bigger/bolder
+  
+}
+
+do.call(grid.arrange, c(p, ncol=2))
+
+
+# Compiled myself for resolving this task (METHOD 2)
+bp1 <- ggplot(raw_data, aes(x=default, y=age, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp1
+bp2 <- ggplot(raw_data, aes(x=default, y=ed, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp2 
+bp3 <- ggplot(raw_data, aes(x=default, y=employ, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp3 
+bp4 <- ggplot(raw_data, aes(x=default, y=address, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp4 
+bp5 <- ggplot(raw_data, aes(x=default, y=income, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp5 
+bp6 <- ggplot(raw_data, aes(x=default, y=debtinc, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp6 
+bp7 <- ggplot(raw_data, aes(x=default, y=creddebt, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp7 
+bp8 <- ggplot(raw_data, aes(x=default, y=othdebt, group=default)) + 
+  geom_boxplot(aes(fill=default))
+bp8 
+plist <- list(bp1, 	bp2, 	bp3, 	bp4, 	bp5, 	bp6, 	bp7, 	bp8)
+do.call("grid.arrange", c(plist))
+do.call(grid.arrange, c(plist, ncol=2))
+
+# SUCCESS - 2X4 matrix of the BOXPLOTS CREATED on 1 picture 8 charts. 
+# If there is a long time expectation - please, re-run the last line again: 
+#do.call(grid.arrange, c(plist, ncol=2))
+# It creates 2X4 boxplot matrix
+
+
+
+
+
+# 10) Create histogram of employ for those who defaulted (default = 1) and not (default  = 0) on the same graph (use color to distinguish 
+#     defaulted and nondefaulted). Make histogram a bit transparent by setting alpha to 0.5 (hope you remember how to do it)
+
+# version 3: data divided by 2 columns: 1 and 0 default; alpha 0.5; coloring by the number of employed (decoration)
+bpe3 = ggplot(raw_data,aes(x=raw_data$default,group=employ,fill=employ))+
+  geom_histogram(position="identity",alpha=0.5,binwidth=0.25)+theme_bw()
+bpe3 
+
+# bpe3 is the answer. 
+
+
+
+# 1) Estimate a logistic regression (google glm) of default on all other variables (use bankloans_existing data).
+#    To do that you need to run the following commands
+#sapply(bankloans_new, process_missing)
+#glm.D93 = glm(bankloans_new$default ~ bankloans_new$age + bankloans_new$ed + bankloans_new$employ + bankloans_new$address + bankloans_new$income + bankloans_new$debtinc + bankloans_new$creddebt + bankloans_new$othdebt, family = poisson())
+#anova(glm.D93)
+#summary(glm.D93)
+#(A0 <- AIC(glm.D93))
+#(ll <- logLik(glm.D93))
+#A1 <- -2*c(ll) + 2*attr(ll, "df")
+#A2 <- glm.D93$family$aic(bankloans_new$default, mu=fitted(glm.D93), wt=1) +
+#  2 * length(coef(glm.D93))
+#stopifnot(exprs = {
+#  all.equal(A0, A1)
+#  all.equal(A1, A2)
+# all.equal(A1, glm.D93$aic)})
+
+#summary(glm.D93)
+
+#u1 = bankloans_existing$dummy_model = -1.8319486 + 0.0234260*bankloans_existing$age+0.0570720*bankloans_existing$ed + -0.1370392*bankloans_existing$employ + -0.0527871*bankloans_existing$address + -0.0006946*bankloans_existing$income + 0.0397453*bankloans_existing$debtinc + 0.2245588*bankloans_existing$creddebt + -0.0069087*bankloans_existing$default
+#u1
+
+
+
+# age - Age of Customer
+# ed - Eductation level of customer
+# employ: Tenure with current employer (in years)
+# address: Number of years in same address
+# income: Customer Income
+# debtinc: Debt to income ratio
+# creddebt: Credit to Debt ratio
+# othdebt: Other debts  
+
+
+
+glm.D94 = glm(bankloans_existing$default ~ bankloans_existing$age + bankloans_existing$ed + bankloans_existing$employ + bankloans_existing$address + bankloans_existing$income + bankloans_existing$debtinc + bankloans_existing$creddebt + bankloans_existing$othdebt, family = poisson())
+anova(glm.D94)
+summary(glm.D94)
+#u2 = bankloans_existing$dummy_model = 1/(1+2.71828^(-1*(-1.8319486 + 0.0234260*bankloans_new$age+0.0570720*bankloans_new$ed + -0.1370392*bankloans_new$employ + -0.0527871*bankloans_new$address + -0.0006946*bankloans_new$income + 0.0397453*bankloans_new$debtinc + 0.2245588*bankloans_new$creddebt + -0.0069087*bankloans_new$default)))
+#u2
+
+
+# 2) Create a confusion matrix for threshold 0.5, by running the following line.
+#    For more info on confusion matrix https://towardsdatascience.com/taking-the-confusion-out-of-confusion-matrices-c1ce054b3d3e
+#    Note, confusion matrixes are 2x2 matrices with elements
+#    True positive (TP) | False Positive (FP)
+#    False negative (FN)| True  Negative (TN)
+
+#tab1 = table(bankloans_new, u2  > 0.5)
+#tab1
+# tp = tab3[1,1] fp = tab3[1,2] fn = tab3[2,1]
+#table(bankloans_existing$default, glm.D94$fitted.values  > 0.5)
+#matrix(1:9, nrow=3, byrow=TRUE)
+tab1 = table(bankloans_existing$default, glm.D94$fitted.values  > 0.5)
+tab1
+conf_matrix = c(tp = tab1[2,2], tab1[1,2], tab1[2,1], tab1[1,1] )
+tab2 = matrix(conf_matrix, nrow=2, byrow=FALSE)
+#colnames(tab2) <- c(TRUE, FALSE)
+#rownames(tab2) = c('positive', 'negative')
+#colnames(baskets.team) <- c(“1st”, “2nd”, “3th”, “4th”, “5th”, “6th”)
+tab2
+
+
+# 3) Accuracy is one of the way it is calculating using the formula
+#    accuracy =  (TP+TN)/(TP+TN+FP+FN)
+#    it is effectively a fraction of all correctly specified 
+#    Create a function that has inputs  default_column  and the predicted default probabilities (they have to have the same lenght!)
+#    The function has to estimate accuracy for a grid of thresholds starting from 0.05 to 0.95 with increment 0.05, i.e.
+#    0.05, 0.10, 0.15, ...., 0.85, 0.90, 0.95
+#    The function should output the optimal threshold value, i.e. value for the threshold for which accuracy is maximized!
+tp = tab3[1,1] # 
+tn = tab3[2,2] ##
+fp = tab3[1,2] #
+fn = tab3[2,1] ## 
+tp
+tn
+fp
+fn
+accuracy_f = (tp+tn)/(tp+fn+fp+tn)
+accuracy_f
+
+
+var_logit <- function(x){
+  x1=table(bankloans_existing$default, glm.D94$fitted.values > 0.05)
+  x2=table(bankloans_existing$default, glm.D94$fitted.values > 0.1)
+  x3=table(bankloans_existing$default, glm.D94$fitted.values > 0.15)
+  x4=table(bankloans_existing$default, glm.D94$fitted.values > 0.2)
+  x5=table(bankloans_existing$default, glm.D94$fitted.values > 0.25)
+  x6=table(bankloans_existing$default, glm.D94$fitted.values > 0.3)
+  x7=table(bankloans_existing$default, glm.D94$fitted.values > 0.35)
+  x8=table(bankloans_existing$default, glm.D94$fitted.values > 0.4)
+  x9=table(bankloans_existing$default, glm.D94$fitted.values > 0.45)
+  x10=table(bankloans_existing$default, glm.D94$fitted.values > 0.5)
+  x11=table(bankloans_existing$default, glm.D94$fitted.values > 0.55)
+  x12=table(bankloans_existing$default, glm.D94$fitted.values > 0.6)
+  x13=table(bankloans_existing$default, glm.D94$fitted.values > 0.65)
+  x14=table(bankloans_existing$default, glm.D94$fitted.values > 0.7)
+  x15=table(bankloans_existing$default, glm.D94$fitted.values > 0.75)
+  x16=table(bankloans_existing$default, glm.D94$fitted.values > 0.8)
+  x17=table(bankloans_existing$default, glm.D94$fitted.values > 0.85)
+  x18=table(bankloans_existing$default, glm.D94$fitted.values > 0.9)
+  x19=table(bankloans_existing$default, glm.D94$fitted.values > 0.95)
+  opl=c(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19 )
+  mopl = max(opl)
+ 
+  tp1 = x1[1,1]
+  tp2 = x2[1,1]
+  tp3 = x3[1,1]
+  tp4 = x4[1,1]
+  tp5 = x5[1,1]
+  tp6 = x6[1,1]
+  tp7 = x7[1,1]
+  tp8 = x8[1,1]
+  tp9 = x9[1,1]
+  tp10 = x10[1,1]
+  tp11 = x11[1,1]
+  tp12 = x12[1,1]
+  tp13 = x13[1,1]
+  tp14 = x14[1,1]
+  tp15 = x15[1,1]
+  tp16 = x16[1,1]
+  tp17 = x17[1,1]
+  tp18 = x18[1,1]
+  tp19 = x19[1,1]
+  
+  tn1 = x1[2,2]
+  tn2 = x2[2,2]
+  tn3 = x3[2,2]
+  tn4 = x4[2,2]
+  tn5 = x5[2,2]
+  tn6 = x6[2,2]
+  tn7 = x7[2,2]
+  tn8 = x8[2,2]
+  tn9 = x9[2,2]
+  tn10 = x10[2,2]
+  tn11 = x11[2,2]
+  tn12 = x12[2,2]
+  tn13 = x13[2,2]
+  tn14 = x14[2,2]
+  tn15 = x15[2,2]
+  tn16 = x16[2,2]
+  tn17 = x17[2,2]
+  tn18 = x18[2,2]
+  tn19 = x19[2,2]
+  
+  fp1 = x1[1,2]
+  fp2 = x2[1,2]
+  fp3 = x3[1,2]
+  fp4 = x4[1,2]
+  fp5 = x5[1,2]
+  fp6 = x6[1,2]
+  fp7 = x7[1,2]
+  fp8 = x8[1,2]
+  fp9 = x9[1,2]
+  fp10 = x10[1,2]
+  fp11 = x11[1,2]
+  fp12 = x12[1,2]
+  fp13 = x13[1,2]
+  fp14 = x14[1,2]
+  fp15 = x15[1,2]
+  fp16 = x16[1,2]
+  fp17 = x17[1,2]
+  fp18 = x18[1,2]
+  fp19 = x19[1,2]
+  
+  fn1 = x1[2,1]
+  fn2 = x2[2,1]
+  fn3 = x3[2,1]
+  fn4 = x4[2,1]
+  fn5 = x5[2,1]
+  fn6 = x6[2,1]
+  fn7 = x7[2,1]
+  fn8 = x8[2,1]
+  fn9 = x9[2,1]
+  fn10 = x10[2,1]
+  fn11 = x11[2,1]
+  fn12 = x12[2,1]
+  fn13 = x13[2,1]
+  fn14 = x14[2,1]
+  fn15 = x15[2,1]
+  fn16 = x16[2,1]
+  fn17 = x17[2,1]
+  fn18 = x18[2,1]
+  fn19 = x19[2,1]
+  
+  
+  
+  accuracy0.05 = (tp1+fn1)/(tp1+fn1+fp1+tn1)
+  accuracy0.1 = (tp2+fn2)/(tp2+fn2+fp2+tn2)
+  accuracy0.15 = (tp3+fn3)/(tp3+fn3+fp3+tn3)
+  accuracy0.2 = (tp4+fn4)/(tp4+fn4+fp4+tn4)
+  accuracy0.25 = (tp5+fn5)/(tp5+fn5+fp5+tn5)
+  accuracy0.3 = (tp6+fn6)/(tp6+fn6+fp6+tn6)
+  accuracy0.35 = (tp7+fn7)/(tp7+fn7+fp7+tn7)
+  accuracy0.4 = (tp8+fn8)/(tp8+fn8+fp8+tn8)
+  accuracy0.45 = (tp9+fn9)/(tp9+fn9+fp9+tn9)
+  accuracy0.5 = (tp10+fn10)/(tp10+fn10+fp10+tn10)
+  accuracy0.55 = (tp11+fn11)/(tp11+fn11+fp11+tn11)
+  accuracy0.6 = (tp12+fn12)/(tp12+fn12+fp12+tn12)
+  accuracy0.65 = (tp13+fn13)/(tp13+fn13+fp13+tn13)
+  accuracy0.7 = (tp14+fn14)/(tp14+fn14+fp14+tn14)
+  accuracy0.75 = (tp15+fn15)/(tp15+fn15+fp15+tn15)
+  accuracy0.8 = (tp16+fn16)/(tp16+fn16+fp16+tn16)
+  accuracy0.85 = (tp17+fn17)/(tp17+fn17+fp17+tn17)
+  accuracy0.9 = (tp18+fn18)/(tp18+fn18+fp18+tn18)
+  accuracy0.95 = (tp19+fn19)/(tp19+fn19+fp19+tn19)
+  
+  
+  acura=c(accuracy0.05, accuracy0.1, accuracy0.15, accuracy0.2, accuracy0.25, accuracy0.3, accuracy0.35, accuracy0.4, accuracy0.45, accuracy0.5, accuracy0.55, accuracy0.6, accuracy0.65, accuracy0.7, accuracy0.75, accuracy0.8, accuracy0.85, accuracy0.9, accuracy0.95 )
+  
+  
+  macura = max(acura)
+  #description 
+  # words[which (nchar(words) == max(nchar(words)))]
+  # which(v == max(v))
+  #names(v)[v == "NY"] # extract the names, subset by equality to NY
+  # or
+  #names(which(v == "NY")) # extract entries that == NY and get names
+  #acurainfo = c(which(macura == max(acura)))
+  acurainfo = c(0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95)
+  #list(macura, acurainfo, acura)
+  data.frame(macura, acurainfo, acura)
+  # TryCatch - for dummies - they have no 1 and 99 percentile - causes error. 
+  #tryCatch(list(description,quantilesxx, sdex, summix, nobs), error=function(e) list(description, sdex, summix, nobs))
+  #x
+}
+var_logit(bankloans_new$income)
+# SUCCESS 
+# Explanations to the function: the function exactly follows the provided formula in the set of this part
+# and it estimates what was asked to estimate: which percentile is the maximum accuracy estimated by the algorithm provided above 
+# This function returns 3 info columns for any column: 
+#macura = maximum accurancy at given percentiles (5%-95%); 
+# acurainfo - the exact percentile for a certain value of accuracy within (5%-95%) range
+# acura - the exact accuracy we receive at a given percentile (the percentile info is in column 2 - acurainfo)
+
+
+# 4) Another (and even more popular choice) is Specifity - Sesitivity score. Optimal threshold is chosen as one for which
+#    the two the absolute difference abs(Specifity - Sensitivity) is closest to zero
+#    Specifity  = TN/(TN+FP)
+#    Sensitivity  = TP/(TP+FN)
+#    Create a function that would calculate Specifity and Sensitivity for a the same grid as in part 3. The function should output
+#    the threshold value for which the absolute difference is minimized
+
+# FUNCTION OUTPUT COLUMNS: SPECIFITY; SENSIVITY; DIFFERENCE; MINIMIZED DIFFERENCE
+var_logit_sens_score <- function(x){
+  
+  x1=table(bankloans_existing$default, glm.D94$fitted.values > 0.05)
+  x2=table(bankloans_existing$default, glm.D94$fitted.values > 0.1)
+  x3=table(bankloans_existing$default, glm.D94$fitted.values > 0.15)
+  x4=table(bankloans_existing$default, glm.D94$fitted.values > 0.2)
+  x5=table(bankloans_existing$default, glm.D94$fitted.values > 0.25)
+  x6=table(bankloans_existing$default, glm.D94$fitted.values > 0.3)
+  x7=table(bankloans_existing$default, glm.D94$fitted.values > 0.35)
+  x8=table(bankloans_existing$default, glm.D94$fitted.values > 0.4)
+  x9=table(bankloans_existing$default, glm.D94$fitted.values > 0.45)
+  x10=table(bankloans_existing$default, glm.D94$fitted.values > 0.5)
+  x11=table(bankloans_existing$default, glm.D94$fitted.values > 0.55)
+  x12=table(bankloans_existing$default, glm.D94$fitted.values > 0.6)
+  x13=table(bankloans_existing$default, glm.D94$fitted.values > 0.65)
+  x14=table(bankloans_existing$default, glm.D94$fitted.values > 0.7)
+  x15=table(bankloans_existing$default, glm.D94$fitted.values > 0.75)
+  x16=table(bankloans_existing$default, glm.D94$fitted.values > 0.8)
+  x17=table(bankloans_existing$default, glm.D94$fitted.values > 0.85)
+  x18=table(bankloans_existing$default, glm.D94$fitted.values > 0.9)
+  x19=table(bankloans_existing$default, glm.D94$fitted.values > 0.95)
+  opl=c(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19 )
+  mopl = max(opl)
+  
+  tp1 = x1[1,1]
+  tp2 = x2[1,1]
+  tp3 = x3[1,1]
+  tp4 = x4[1,1]
+  tp5 = x5[1,1]
+  tp6 = x6[1,1]
+  tp7 = x7[1,1]
+  tp8 = x8[1,1]
+  tp9 = x9[1,1]
+  tp10 = x10[1,1]
+  tp11 = x11[1,1]
+  tp12 = x12[1,1]
+  tp13 = x13[1,1]
+  tp14 = x14[1,1]
+  tp15 = x15[1,1]
+  tp16 = x16[1,1]
+  tp17 = x17[1,1]
+  tp18 = x18[1,1]
+  tp19 = x19[1,1]
+  
+  tn1 = x1[2,2]
+  tn2 = x2[2,2]
+  tn3 = x3[2,2]
+  tn4 = x4[2,2]
+  tn5 = x5[2,2]
+  tn6 = x6[2,2]
+  tn7 = x7[2,2]
+  tn8 = x8[2,2]
+  tn9 = x9[2,2]
+  tn10 = x10[2,2]
+  tn11 = x11[2,2]
+  tn12 = x12[2,2]
+  tn13 = x13[2,2]
+  tn14 = x14[2,2]
+  tn15 = x15[2,2]
+  tn16 = x16[2,2]
+  tn17 = x17[2,2]
+  tn18 = x18[2,2]
+  tn19 = x19[2,2]
+  
+  fp1 = x1[1,2]
+  fp2 = x2[1,2]
+  fp3 = x3[1,2]
+  fp4 = x4[1,2]
+  fp5 = x5[1,2]
+  fp6 = x6[1,2]
+  fp7 = x7[1,2]
+  fp8 = x8[1,2]
+  fp9 = x9[1,2]
+  fp10 = x10[1,2]
+  fp11 = x11[1,2]
+  fp12 = x12[1,2]
+  fp13 = x13[1,2]
+  fp14 = x14[1,2]
+  fp15 = x15[1,2]
+  fp16 = x16[1,2]
+  fp17 = x17[1,2]
+  fp18 = x18[1,2]
+  fp19 = x19[1,2]
+  
+  fn1 = x1[2,1]
+  fn2 = x2[2,1]
+  fn3 = x3[2,1]
+  fn4 = x4[2,1]
+  fn5 = x5[2,1]
+  fn6 = x6[2,1]
+  fn7 = x7[2,1]
+  fn8 = x8[2,1]
+  fn9 = x9[2,1]
+  fn10 = x10[2,1]
+  fn11 = x11[2,1]
+  fn12 = x12[2,1]
+  fn13 = x13[2,1]
+  fn14 = x14[2,1]
+  fn15 = x15[2,1]
+  fn16 = x16[2,1]
+  fn17 = x17[2,1]
+  fn18 = x18[2,1]
+  fn19 = x19[2,1]
+  
+  
+  
+  
+  sensivity1 = tp1/(tp1+fn1)
+  sensivity2 = tp2/(tp2+fn2)
+  sensivity3 = tp3/(tp3+fn3)
+  sensivity4 = tp4/(tp4+fn4)
+  sensivity5 = tp5/(tp5+fn5)
+  sensivity6 = tp6/(tp6+fn6)
+  sensivity7 = tp7/(tp7+fn7)
+  sensivity8 = tp8/(tp8+fn8)
+  sensivity9 = tp9/(tp9+fn9)
+  sensivity10 = tp10/(tp10+fn10)
+  sensivity11 = tp11/(tp11+fn11)
+  sensivity12 = tp12/(tp12+fn12)
+  sensivity13 = tp13/(tp13+fn13)
+  sensivity14 = tp14/(tp14+fn14)
+  sensivity15 = tp15/(tp15+fn15)
+  sensivity16 = tp16/(tp16+fn16)
+  sensivity17 = tp17/(tp17+fn17)
+  sensivity18 = tp18/(tp18+fn18)
+  sensivity19 = tp19/(tp19+fn19)
+  
+  specifity1 = tn1/(tn1+fp1)
+  specifity2 = tn2/(tn2+fp2)
+  specifity3 = tn3/(tn3+fp3)
+  specifity4 = tn4/(tn4+fp4)
+  specifity5 = tn5/(tn5+fp5)
+  specifity6 = tn6/(tn6+fp6)
+  specifity7 = tn7/(tn7+fp7)
+  specifity8 = tn8/(tn8+fp8)
+  specifity9 = tn9/(tn9+fp9)
+  specifity10 = tn10/(tn10+fp10)
+  specifity11 = tn11/(tn11+fp11)
+  specifity12 = tn12/(tn12+fp12)
+  specifity13 = tn13/(tn13+fp13)
+  specifity14 = tn14/(tn14+fp14)
+  specifity15 = tn15/(tn15+fp15)
+  specifity16 = tn16/(tn16+fp16)
+  specifity17 = tn17/(tn17+fp17)
+  specifity18 = tn18/(tn18+fp18)
+  specifity19 = tn19/(tn19+fp19)
+  
+  difference1 = abs(sensivity1-specifity1)
+  difference2 = abs(sensivity2-specifity2)
+  difference3 = abs(sensivity3-specifity3)
+  difference4 = abs(sensivity4-specifity4)
+  difference5 = abs(sensivity5-specifity5)
+  difference6 = abs(sensivity6-specifity6)
+  difference7 = abs(sensivity7-specifity7)
+  difference8 = abs(sensivity8-specifity8)
+  difference9 = abs(sensivity9-specifity9)
+  difference10 = abs(sensivity10-specifity10)
+  difference11 = abs(sensivity11-specifity11)
+  difference12 = abs(sensivity12-specifity12)
+  difference13 = abs(sensivity13-specifity13)
+  difference14 = abs(sensivity14-specifity14)
+  difference15 = abs(sensivity15-specifity15)
+  difference16 = abs(sensivity16-specifity16)
+  difference17 = abs(sensivity17-specifity17)
+  difference18 = abs(sensivity18-specifity18)
+  difference19 = abs(sensivity19-specifity19)
+  
+  difa=c(difference1,difference2,difference3,difference4,difference5,difference6,difference7,difference8,difference9,difference10,difference11,difference12,difference13,difference14,difference15,difference16,difference17,difference18,difference19)
+  mindifa = min(difa)
+  sumsen=c(sensivity1,sensivity2,sensivity3,sensivity4,sensivity5,sensivity6,sensivity7,sensivity8,sensivity9,sensivity10,sensivity11,sensivity12,sensivity13,sensivity14,sensivity15,sensivity16,sensivity17,sensivity18,sensivity19)
+  sumspec=c(specifity1,specifity2,specifity3,specifity4,specifity5,specifity6,specifity7,specifity8,specifity9,specifity10,specifity11,specifity12,specifity13,specifity14,specifity15,specifity16,specifity17,specifity18,specifity19)
+  acurainfo = c(0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95)
+  
+  
+  
+  data.frame(acurainfo, difa, mindifa, sumsen, sumspec)
+  
+  
+}
+var_logit_sens_score(bankloans_new$income)
+# SUCCESS
+# Explanations to the function: the function exactly follows the provided formula in the set of this part
+# and it estimates what was asked to estimate: which percentile (acurainfo) corresponds with which difference (difa); it shows the minimum difference (mindifa - in our example for this column corresponds with 0.55 accuracy); sensivity (sumsen column); specifity (sumspec column)  
+
+# 5) Are the estimated thresholds different between the two models?
+# For example, lets take income column in the bankloans_new database
+var_logit(bankloans_existing$income)
+# Model estimated 95 percentile as the highest accurance 
+var_logit_sens_score(bankloans_existing$income)
+# Model prescribed 55 percentali as the highest accurance
+
+
+# 6) Predict the default probabilities for the bankloans_missing ( model.predict). 
+#Obtain the probabilities of default. 
+#    Convert them to booleans (1 or 0) based on either threshold estimated above. 
+# bankloans_missing IS THE FIRST TIME MENTIONED IN THE TASK - what is this? 
+
+bankloans_missing = bankloans_new
+logit <- glm(bankloans_existing$default ~ bankloans_existing$age + bankloans_existing$ed + bankloans_existing$employ + bankloans_existing$address + bankloans_existing$income + bankloans_existing$debtinc + bankloans_existing$creddebt + bankloans_existing$othdebt,family="binomial")
+summary(logit)
+pred <- predict(logit,bankloans_missing=data)
+pred
+probs <- exp(pred)/(1+exp(pred))
+probs
+mis_u1 = bankloans_missing$logit_u = 1/(1+2.71828^(-1*(-1.553623 + 0.034407*bankloans_missing$age+0.090563*bankloans_missing$ed + -0.258227*bankloans_missing$employ + -0.105004*bankloans_missing$address + -0.008567*bankloans_missing$income + 0.067330*bankloans_missing$debtinc + 0.625581*bankloans_missing$creddebt + 0.062704*bankloans_missing$othdebt)))
+bankloans_missing$logit_u = 1/(1+2.71828^(-1*(-1.553623 + 0.034407*bankloans_missing$age+0.090563*bankloans_missing$ed + -0.258227*bankloans_missing$employ + -0.105004*bankloans_missing$address + -0.008567*bankloans_missing$income + 0.067330*bankloans_missing$debtinc + 0.625581*bankloans_missing$creddebt + 0.062704*bankloans_missing$othdebt)))
+
+mis_u1
+bankloans_missing$logit_u_boolean = ifelse(bankloans_missing$logit_u >= 0.5, 1, 0)
+bankloans_missing$logit_u_boolean
+# This (the last line) returns boolean matrix where 1 = threshold value is estimated above and 0 - otherwise
+# These values are attached to the main element as a new column
+# 7) Compute summary statistics for the obtained predictions and for the defaults column of bankloans_existing. Compute the fractions of
+#    defaults (you may use one of the functions you programmed before). Do the results differ a lot?
+describe(bankloans_missing$logit_u)
+describe(bankloans_missing$logit_u_boolean)
+
+# Returns: 
+# bankloans_missing$logit_u 
+#n  missing distinct     Info      Sum     Mean      Gmd 
+#150        0        2    0.403       24     0.16   0.2706 
+# We have 150 observations; 24 are above threshold; others - are below (missing values is 0)
+var_logit_sens_score(bankloans_missing$logit_u_boolean)
+var_logit_sens_score(bankloans_missing$income)
+var_logit_sens_score(bankloans_new$income)
+# No great difference in results - the matrix is similar optimal value in 55 percentile accuracy
+
+# 8) Replace NA's in default columns of bankloans_missing with the predicted values. Append bankloans_missing with bankloans_existing
+bankloans_missing$default = bankloans_missing$logit_u_boolean
+bankloans_missing$default
+# Cleaning the data from the additional data that was used
+bankloans_missing = subset(bankloans_missing, select = -def_exists )
+bankloans_missing = subset(bankloans_missing, select = -dummy_model )
+bankloans_missing = subset(bankloans_missing, select = -logit_u )
+bankloans_missing = subset(bankloans_missing, select = -logit_u_boolean)
+
+total_df = rbind(bankloans_existing, bankloans_missing)
+
+describe(total_df$default)
+# Output
+#total_df$default 
+#n  missing distinct     Info      Sum     Mean      Gmd 
+#850        0        2    0.553      207   0.2435   0.3689 
+# 850 observations; no missing values - missing values replaced with the predictions from our regression
+
+# 9) Save data as bankloans.xlsx with 3 sheets, on the first sheet there should be a dataframe you obtained in part 8 above, sheet 2 
+#    must contain bankloans_existing dataframe, and sheet 3 must contain the transposed version of bankloans_missing dataframe
+install.packages("xlsx")
+library("xlsx")
+write.xlsx(total_df, file = "merry_christmas.xlsx", sheetName = "processed_data", append = FALSE)
+write.xlsx(bankloans_existing, file = "merry_christmas.xlsx", sheetName="without_na", append=TRUE)
+loans_miss_transpose <- as.data.frame(t(as.matrix(bankloans_missing)))
+loans_miss_transpose
+write.xlsx(loans_miss_transpose, file = "merry_christmas.xlsx", sheetName="transposed_d", append=TRUE)
+# The final Excel has all 3 sheets with the prescribed data in
+# Merry Christmas! 
+
+
+
