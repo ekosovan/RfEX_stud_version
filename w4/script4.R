@@ -88,14 +88,15 @@ games_2k = read_by_year("data/yearly", 2000:2030)
 games_by_year = 
     games %>% 
     select(Global_Sales, Year_of_Release, Critic_Score, User_Score) %>% 
-    na.omit() %>% 
-    split(.$Year_of_Release)
-
+    na.omit() %>% #forgetting rows with NAs for this case - whole row
+    split(.$Year_of_Release) #"."used as refers to previous command
+head(games_by_year)
+head(games)
 
 games %>% 
-    drop_na() %>% 
+    drop_na() %>% #drop rows containing missing values
     filter(Year_of_Release > 1994) %>% 
-    group_by(Year_of_Release) %>% 
+    group_by(Year_of_Release) %>% #na.rm - handles the Nas and ingores them
     summarise(critics = min(Critic_Score, na.rm = T),
               users = min(User_Score, na.rm = T)) %>% View()
 
