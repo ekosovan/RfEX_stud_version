@@ -36,6 +36,7 @@ library(tidyverse)
 library(readr)
 library(reshape2)
 library(ggplot2)
+library(Hmisc)
 
 data <- read_csv("bankloans.csv")
 str(data)
